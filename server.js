@@ -24,6 +24,7 @@ app.listen(PORT, () => console.log(`Listening on ${PORT}`));
 app.get('/location', getLocation);
 app.get('/weather', getWeather);
 app.get('/events', getEvents);
+app.get('/movies', getMovies);
 
 // handle errors
 function handleError(error, response) {
@@ -84,6 +85,27 @@ Event.prototype.save = function(location_id) {
 };
 
 Event.checkDatabase = checkDatabase;
+
+// movie constructor
+function Movie(movie) {
+  this.title = movie.title,
+  this.overview = movie.overview,
+  this.average_votes = movie.vote_average,
+  this.total_votes = movie.vote_count,
+  this.image_url = `https://image.tmdb.org/t/p/w200_and_h300_bestv2${movie.poster_path}`,
+  this.popularity = movie.popularity,
+  this.released_on = movie.release_date;
+}
+
+
+Movie.prototype.save = function(location_id) {
+  const SQL = `INSERT INTO movies (title, overview, average_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
+  const values = [this.title, this.overview, this.average_votes, this.image_url, this.popularity, this.released_on, location_id];
+
+  client.query(SQL, values);
+};
+
+Movie.checkDatabase = checkDatabase;
 
 // go out to Google AP
 function getLocation(request, response) {
@@ -194,6 +216,37 @@ function getEvents(request, response) {
     }
   });
 }
+
+// call out to movies
+function getMovies(request, response) {
+  Movie.checkDatabase({
+    tableName: 'movies',
+    location: request.query.data.id,
+
+    cacheHit: function (result) {
+      response.send(result.rows);
+    },
+
+    cacheMiss: function () {
+      const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&language=en-US&query=${request.query.data.search_query};`;
+
+      superagent.get(URL)
+        .then(movieResults => {
+          if(!movieResults.body.results.length) { throw `NO DATA`;}
+          else {
+            const movies = movieResults.body.results.map(movieData => {
+              let movie = new Movie(movieData);
+              movie.save(request.query.data.id);
+              return movie;
+            });
+
+            response.send(movies);
+          }
+        });
+    }
+  });
+}
+
 
 // check database for results
 function checkDatabase(options) {

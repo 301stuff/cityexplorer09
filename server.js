@@ -10,6 +10,7 @@ const superagent = require('superagent');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+
 // connect to database
 const { Client } = require('pg');
 const client = new Client(process.env.DATABASE_URL);
@@ -25,6 +26,7 @@ app.get('/location', getLocation);
 app.get('/weather', getWeather);
 app.get('/events', getEvents);
 app.get('/movies', getMovies);
+app.get('/yelp', getYelp);
 
 // handle errors
 function handleError(error, response) {
@@ -106,6 +108,54 @@ Movie.prototype.save = function(location_id) {
 };
 
 Movie.checkDatabase = checkDatabase;
+
+function Yelp(yelp) {
+  this.name = yelp.name,
+  this.image_url = yelp.image_url,
+  this.price = yelp.price,
+  this.rating = yelp.rating,
+  this.url = yelp.url;
+}
+
+Yelp.prototype.save = function(location_id) {
+  const SQL = `INSERT INTO yelp (name, image_url, price, rating, url, location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+  const values = [this.name, this.image_url, this.price, this.rating, this.url, location_id];
+
+  client.query(SQL, values);
+};
+
+Yelp.checkDatabase = checkDatabase;
+
+function getYelp(request, response) {
+  Yelp.checkDatabase({
+    tableName: 'yelp',
+    location: request.query.data.id,
+
+    cacheHit: function (result) {
+      response.send(result.rows);
+    },
+
+    cacheMiss: function () {
+      const URL = `https://api.yelp.com/v3/businesses/search?term=delis&latitude=${request.query.data.latitude}&longitude=${request.query.data.longitude};`;
+      const auth = `Bearer ${process.env.YELP_API_KEY}`;
+
+      superagent.get(URL).set('Authorization', auth)
+        .then(yelpResults => {
+          if (!yelpResults.body.businesses.length) { throw `NO DATA`;}
+          else {
+            const yelpSummaries = yelpResults.body.businesses.map(data => {
+              let summary = new Yelp(data);
+              summary.save(request.query.data.id);
+              return summary;
+            });
+
+            response.send(yelpSummaries);
+          }
+        });
+
+    }
+  });
+}
 
 // go out to Google AP
 function getLocation(request, response) {

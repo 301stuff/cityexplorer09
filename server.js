@@ -223,23 +223,21 @@ function getWeather(request, response) {
         deleteDatabase({
           tableName: 'weather',
           location: request.query.data.id,
-        })
+        });
 
-          .then( () => {
-            const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
+        const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
 
-            superagent.get(url)
-              .then(weatherResults => {
-                if (!weatherResults.body.daily.data.length) { throw `NO DATA`;}
-                else {
-                  const weatherSummaries = weatherResults.body.daily.data.map(day => {
-                    let summary = new Weather(day);
-                    summary.save(request.query.data.id);
-                    return summary;
-                  });
-                  response.send(weatherSummaries);
-                }
+        superagent.get(url)
+          .then(weatherResults => {
+            if (!weatherResults.body.daily.data.length) { throw `NO DATA`;}
+            else {
+              const weatherSummaries = weatherResults.body.daily.data.map(day => {
+                let summary = new Weather(day);
+                summary.save(request.query.data.id);
+                return summary;
               });
+              response.send(weatherSummaries);
+            }
           });
 
       }
@@ -327,6 +325,7 @@ function getMovies(request, response) {
     }
   });
 }
+
 
 
 // check database for results

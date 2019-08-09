@@ -43,11 +43,11 @@ function Location(query, data) {
 }
 
 Location.prototype.save = function() {
-  const SQL = `INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING id`;
+  const SQL = `INSERT INTO locations (search_query,formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING id`;
   const values = [this.search_query,
-    this.formatted_address,
+    this.formatted_query,
     this.latitude,
-    this.longitude
+    this.longitude,
   ];
 
   return client.query(SQL, values)
@@ -63,8 +63,8 @@ function Weather(day) {
 }
 
 Weather.prototype.save = function(location_id) {
-  const SQL = `INSERT INTO weather (forecast, time, location_id) VALUES ($1, $2, $3);`;
-  const values = [this.forecast, this.time, location_id];
+  const SQL = `INSERT INTO weather (forecast, time, created_at, location_id) VALUES ($1, $2, $3, $4);`;
+  const values = [this.forecast, this.time, this.created_at, location_id];
 
   client.query(SQL, values);
 
@@ -77,11 +77,12 @@ function Event(event) {
   this.name = event.name.text;
   this.event_date = new Date(event.start.local).toString().slice(0, 15);
   this.summary = event.summary;
+  this.created_at = Date.now();
 }
 
 Event.prototype.save = function(location_id) {
-  const SQL = `INSERT INTO events (link, name, event_date, summary, location_id) VALUES ($1, $2, $3, $4, $5);`;
-  const values = [this.link, this.name, this.event_date, this.summary, location_id];
+  const SQL = `INSERT INTO events (link, name, event_date, summary, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+  const values = [this.link, this.name, this.event_date, this.summary, this.created_at, location_id];
 
   client.query(SQL, values);
 };
@@ -97,12 +98,13 @@ function Movie(movie) {
   this.image_url = `https://image.tmdb.org/t/p/w200_and_h300_bestv2${movie.poster_path}`,
   this.popularity = movie.popularity,
   this.released_on = movie.release_date;
+  this.created_at = Date.now();
 }
 
 
 Movie.prototype.save = function(location_id) {
-  const SQL = `INSERT INTO movies (title, overview, average_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
-  const values = [this.title, this.overview, this.average_votes, this.image_url, this.popularity, this.released_on, location_id];
+  const SQL = `INSERT INTO movies (title, overview, average_votes, image_url, popularity, released_on, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`;
+  const values = [this.title, this.overview, this.average_votes, this.image_url, this.popularity, this.released_on, this.created_at, location_id];
 
   client.query(SQL, values);
 };
@@ -114,12 +116,13 @@ function Yelp(yelp) {
   this.image_url = yelp.image_url,
   this.price = yelp.price,
   this.rating = yelp.rating,
+  this.created_at = Date.now(),
   this.url = yelp.url;
 }
 
 Yelp.prototype.save = function(location_id) {
-  const SQL = `INSERT INTO yelp (name, image_url, price, rating, url, location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
-  const values = [this.name, this.image_url, this.price, this.rating, this.url, location_id];
+  const SQL = `INSERT INTO yelp (name, image_url, price, rating, url, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
+  const values = [this.name, this.image_url, this.price, this.rating, this.url, this.created_at, location_id];
 
   client.query(SQL, values);
 };
@@ -216,7 +219,35 @@ function getWeather(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      response.send(result.rows);
+      if((result.rowCount > 0) && (result.rows[0].created_at + 15000 > Date.now())) {
+        deleteDatabase({
+          tableName: 'weather',
+          location: request.query.data.id,
+        })
+
+          .then( () => {
+            const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
+
+            superagent.get(url)
+              .then(weatherResults => {
+                if (!weatherResults.body.daily.data.length) { throw `NO DATA`;}
+                else {
+                  const weatherSummaries = weatherResults.body.daily.data.map(day => {
+                    let summary = new Weather(day);
+                    summary.save(request.query.data.id);
+                    return summary;
+                  });
+                  response.send(weatherSummaries);
+                }
+              });
+          });
+
+      }
+      else {
+        response.send(result.rows);
+
+      }
+
     },
     cacheMiss: function () {
       const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
@@ -313,4 +344,11 @@ function checkDatabase(options) {
       }
     })
     .catch(error => handleError(error));
+}
+
+
+function deleteDatabase(options) {
+  let SQL = `DELETE FROM ${options.tableName} WHERE location_id=$1;`;
+  let values = [options.location];
+  client.query(SQL, values);
 }

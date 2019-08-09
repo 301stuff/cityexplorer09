@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS events (
     name VARCHAR(255),
     event_date CHAR(15),
     summary VARCHAR(1000),
+    created_at BIGINT,
     location_id INTEGER NOT NULL REFERENCES locations(id) 
 );
 
@@ -34,6 +35,7 @@ CREATE TABLE IF NOT EXISTS movies (
     image_url VARCHAR(255),
     popularity VARCHAR(255),
     released_on CHAR(15),
+    created_at BIGINT,
     location_id INTEGER NOT NULL REFERENCES locations(id) 
 );
 
@@ -44,5 +46,6 @@ CREATE TABLE IF NOT EXISTS yelp (
     price VARCHAR(255),
     rating VARCHAR(255),
     url VARCHAR(255),
+    created_at BIGINT,
     location_id INTEGER NOT NULL REFERENCES locations(id)
 );

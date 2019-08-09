@@ -135,7 +135,7 @@ function getYelp(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      if((result.rowCount > 0) && (result.rows[0].created_at + 15000 > Date.now())){
+      if((result.rowCount > 0) && (result.rows[0].created_at + 86400000 > Date.now())){
         deleteDatabase({
           tableName: 'yelp',
           location: request.query.data.id,
@@ -298,7 +298,7 @@ function getEvents(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      if((result.rowCount > 0) && (result.rows[0].created_at + 15000 > Date.now())) {
+      if((result.rowCount > 0) && (result.rows[0].created_at + 86400000 > Date.now())) {
         deleteDatabase({
           tableName: 'events',
           location: request.query.data.id,
@@ -354,7 +354,7 @@ function getMovies(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      if((result.rowCount > 0) && (result.rows[0].created_at + 15000 > Date.now())){
+      if((result.rowCount > 0) && (result.rows[0].created_at + 604800000 > Date.now())){
         deleteDatabase({
           tableName: 'movies',
           location: request.query.data.id,

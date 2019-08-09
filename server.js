@@ -95,7 +95,7 @@ function Movie(movie) {
   this.overview = movie.overview,
   this.average_votes = movie.vote_average,
   this.total_votes = movie.vote_count,
-  this.image_url = `https://image.tmdb.org/t/p/w200_and_h300_bestv2${movie.poster_path}`,
+  this.image_url = `https://image.tmdb.org/t/p/w500/${movie.poster_path}`,
   this.popularity = movie.popularity,
   this.released_on = movie.release_date;
   this.created_at = Date.now();
@@ -338,7 +338,6 @@ function getEvents(request, response) {
     cacheMiss: function () {
       const url = `https://www.eventbriteapi.com/v3/events/search?token=${process.env.EVENTBRITE_API_KEY}&location.address=${request.query.data.formatted_query}`;
 
-      console.log(22222222);
       superagent.get(url)
         .then(eventResults => {
           if (!eventResults.body.events.length) { throw `NO DATA`;}
@@ -370,7 +369,7 @@ function getMovies(request, response) {
           location: request.query.data.id,
         });
 
-        const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&total_results=20&include_adult=false&language=en-US&query=${request.query.data.search_query};`;
+        const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&sort_by=vote_average.desc&total_results=20&include_adult=false&language=en-US&query=${request.query.data.search_query};`;
 
         superagent.get(URL)
           .then(movieResults => {
@@ -394,7 +393,7 @@ function getMovies(request, response) {
     },
 
     cacheMiss: function () {
-      const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&language=en-US&query=${request.query.data.search_query};`;
+      const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&sort_by=vote_average.desc&total_results=20&include_adult=false&language=en-US&query=${request.query.data.search_query};`;
 
       superagent.get(URL)
         .then(movieResults => {

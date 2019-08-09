@@ -135,7 +135,32 @@ function getYelp(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      response.send(result.rows);
+      if((result.rowCount > 0) && (result.rows[0].created_at + 15000 > Date.now())){
+        deleteDatabase({
+          tableName: 'yelp',
+          location: request.query.data.id,
+        });
+
+        const URL = `https://api.yelp.com/v3/businesses/search?term=delis&latitude=${request.query.data.latitude}&longitude=${request.query.data.longitude};`;
+        const auth = `Bearer ${process.env.YELP_API_KEY}`;
+
+        superagent.get(URL).set('Authorization', auth)
+          .then(yelpResults => {
+            if (!yelpResults.body.businesses.length) { throw `NO DATA`;}
+            else {
+              const yelpSummaries = yelpResults.body.businesses.map(data => {
+                let summary = new Yelp(data);
+                summary.save(request.query.data.id);
+                return summary;
+              });
+
+              response.send(yelpSummaries);
+            }
+          });
+      }
+      else {
+        response.send(result.rows);
+      }
     },
 
     cacheMiss: function () {
@@ -273,7 +298,33 @@ function getEvents(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      response.send(result.rows);
+      if((result.rowCount > 0) && (result.rows[0].created_at + 15000 > Date.now())) {
+        deleteDatabase({
+          tableName: 'events',
+          location: request.query.data.id,
+        });
+
+        const url = `https://www.eventbriteapi.com/v3/events/search?token=${process.env.EVENTBRITE_API_KEY}&location.address=${request.query.data.formatted_query}`;
+
+        superagent.get(url)
+          .then(eventResults => {
+            if (!eventResults.body.events.length) { throw `NO DATA`;}
+            else {
+              const events = eventResults.body.events.map(eventData => {
+                let event = new Event(eventData);
+                event.save(request.query.data.id);
+                return event;
+
+              });
+              response.send(events);
+            }
+          });
+      }
+      else {
+
+        response.send(result.rows);
+
+      }
     },
 
     cacheMiss: function () {
@@ -303,7 +354,33 @@ function getMovies(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      response.send(result.rows);
+      if((result.rowCount > 0) && (result.rows[0].created_at + 15000 > Date.now())){
+        deleteDatabase({
+          tableName: 'movies',
+          location: request.query.data.id,
+        });
+
+        const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&language=en-US&query=${request.query.data.search_query};`;
+
+        superagent.get(URL)
+          .then(movieResults => {
+            if(!movieResults.body.results.length) { throw `NO DATA`;}
+            else {
+              const movies = movieResults.body.results.map(movieData => {
+                let movie = new Movie(movieData);
+                movie.save(request.query.data.id);
+                return movie;
+              });
+
+              response.send(movies);
+            }
+          });
+      }
+
+      else {
+        response.send(result.rows);
+      }
+
     },
 
     cacheMiss: function () {

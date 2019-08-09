@@ -135,7 +135,7 @@ function getYelp(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      if((result.rowCount > 0) && (result.rows[0].created_at + 86400000 > Date.now())){
+      if((result.rowCount > 0) && ((Date.now() - result.rows[0].created_at) > 86400000)){
         deleteDatabase({
           tableName: 'yelp',
           location: request.query.data.id,
@@ -244,7 +244,8 @@ function getWeather(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      if((result.rowCount > 0) && (result.rows[0].created_at + 15000 > Date.now())) {
+
+      if((result.rowCount > 0) && ((Date.now() - result.rows[0].created_at) > 15000)) {
         deleteDatabase({
           tableName: 'weather',
           location: request.query.data.id,
@@ -298,12 +299,16 @@ function getEvents(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      if((result.rowCount > 0) && (result.rows[0].created_at + 86400000 > Date.now())) {
+      //if there is data
+      if(result.rowCount > 0 && ((Date.now() - result.rows[0].created_at) > 86400000)) {
+
+        //delete old data
         deleteDatabase({
           tableName: 'events',
           location: request.query.data.id,
         });
 
+        //get new data
         const url = `https://www.eventbriteapi.com/v3/events/search?token=${process.env.EVENTBRITE_API_KEY}&location.address=${request.query.data.formatted_query}`;
 
         superagent.get(url)
@@ -316,20 +321,24 @@ function getEvents(request, response) {
                 return event;
 
               });
+
+              //send new data
               response.send(events);
             }
           });
       }
       else {
-
+        //if data is not old, send data
         response.send(result.rows);
-
       }
+
     },
 
+    //if data does not exist, go get data
     cacheMiss: function () {
       const url = `https://www.eventbriteapi.com/v3/events/search?token=${process.env.EVENTBRITE_API_KEY}&location.address=${request.query.data.formatted_query}`;
 
+      console.log(22222222);
       superagent.get(url)
         .then(eventResults => {
           if (!eventResults.body.events.length) { throw `NO DATA`;}
@@ -347,6 +356,7 @@ function getEvents(request, response) {
   });
 }
 
+
 // call out to movies
 function getMovies(request, response) {
   Movie.checkDatabase({
@@ -354,13 +364,13 @@ function getMovies(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      if((result.rowCount > 0) && (result.rows[0].created_at + 604800000 > Date.now())){
+      if((result.rowCount > 0) && (Date.now() - result.rows[0].created_at > 604800000)){
         deleteDatabase({
           tableName: 'movies',
           location: request.query.data.id,
         });
 
-        const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&language=en-US&query=${request.query.data.search_query};`;
+        const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&total_results=20&include_adult=false&language=en-US&query=${request.query.data.search_query};`;
 
         superagent.get(URL)
           .then(movieResults => {
